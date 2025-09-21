@@ -1,4 +1,4 @@
-import { supabaseServer } from '@/lib/supabase';
+import { supabaseServer } from '../../lib/supabase-server';
 
 export default async function Profile(){
   const sb = supabaseServer();
