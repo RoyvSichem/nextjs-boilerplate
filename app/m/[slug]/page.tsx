@@ -16,12 +16,19 @@ export default async function Meditation(
   if (error || !m) return <main><p>Niet gevonden</p></main>;
 
   return (
-    <main style={{maxWidth:560, margin:'24px auto', padding:'0 16px', textAlign:'center'}}>
-      {m.cover_url && <img src={m.cover_url} alt="" style={{width:'100%', borderRadius:24, marginBottom:16}}/>}
-      <h1>{m.title}</h1>
-      <p style={{color:'#6b6b6b'}}>{m.subtitle}</p>
+  <>
+    <section className="hero">
+      <div className="container">
+        <h1>{m.title}</h1>
+        <p className="lead">{m.subtitle}</p>
+      </div>
+    </section>
+
+    <section className="section" style={{maxWidth:720, margin:'0 auto'}}>
+      {m.cover_url && <img src={m.cover_url} alt="" style={{width:'100%', borderRadius:'var(--radius)', boxShadow:'var(--shadow)', marginBottom:14}}/>}
       <Player src={m.audio_url} duration={m.duration_seconds} meditationId={m.id} />
-      <article style={{textAlign:'left', marginTop:16}}>{m.description}</article>
-    </main>
-  );
-}
+      <article style={{marginTop:16, color:'var(--text)'}} dangerouslySetInnerHTML={{__html: m.description}} />
+    </section>
+  </>
+);
+
