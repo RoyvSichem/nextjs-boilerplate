@@ -1,99 +1,92 @@
-'use client';
-import { useEffect, useState } from 'react';
-import { supabaseBrowser } from '../../lib/supabase-browser';
+import { supabaseServer } from '../../lib/supabase';
+import AdminUploader from '../../components/AdminUploader';
 
-export default function AdminPage(){
-  const sb = supabaseBrowser();
-  const [ok,setOk]=useState<boolean|null>(null);
-  const [catTitle,setCatTitle]=useState('Bodyscan');
-  const [catSlug,setCatSlug]=useState('bodyscan');
-  const [catDesc,setCatDesc]=useState('Ontspan en onderzoek je lichaam');
+export const dynamic = 'force-dynamic';
 
-  const [mTitle,setMTitle]=useState('Bodyscan 10 minuten');
-  const [mSlug,setMSlug]=useState('bodyscan-10m');
-  const [mSub,setMSub]=useState('Korte sessie om te landen');
-  const [mDesc,setMDesc]=useState('Waarom bodyscan belangrijk is, je traint aandacht, je kalmeert het zenuwstelsel, je herstelt focus');
-  const [mDur,setMDur]=useState(600);
-  const [isFree,setIsFree]=useState(true);
-  const [audio,setAudio]=useState<File|null>(null);
-  const [cover,setCover]=useState<File|null>(null);
-  const [log,setLog]=useState<string>('');
+export default async function AdminPage() {
+  const sb = await supabaseServer();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return <main className="container"><p>Geen toegang</p></main>;
 
-  useEffect(()=>{
-    (async()=>{
-      const { data: { user } } = await sb.auth.getUser();
-      if(!user){ setOk(false); return; }
-      const { data: p } = await sb.from('profiles').select('role').eq('id', user.id).single();
-      setOk(p?.role==='admin');
-    })();
-  },[]);
+  const { data: me } = await sb.from('profiles').select('role').eq('id', user.id).single();
+  if (!me || me.role !== 'admin') return <main className="container"><p>Geen toegang</p></main>;
 
-  if(ok===false) return <main style={{maxWidth:640, margin:'40px auto', padding:'0 16px'}}><p>Geen toegang</p></main>;
-  if(ok===null) return <main style={{maxWidth:640, margin:'40px auto', padding:'0 16px'}}><p>Laden…</p></main>;
+  // data voor dropdowns
+  const { data: cats } = await sb.from('categories').select('id,title');
 
-  const run = async (e:React.FormEvent)=>{
-    e.preventDefault();
-    setLog('Start');
-    // categorie
-    let catId:number|undefined;
-    const { data: cat } = await sb.from('categories').select('id').eq('slug', catSlug).maybeSingle();
-    if(cat){ catId = cat.id; setLog(l=>l+', categorie bestaat'); }
-    else{
-      const { data: ins, error } = await sb.from('categories').insert({ slug:catSlug, title:catTitle, description:catDesc }).select('id').single();
-      if(error) return setLog('Fout categorie: '+error.message);
-      catId = ins.id; setLog(l=>l+', categorie gemaakt');
-    }
-    // uploads
-    let audioUrl = '', coverUrl = '';
-    if(audio){
-      const path = `${mSlug}/${Date.now()}-${audio.name}`;
-      const { error } = await sb.storage.from('audio').upload(path, audio);
-      if(error) return setLog('Fout audio upload: '+error.message);
-      const { data } = sb.storage.from('audio').getPublicUrl(path);
-      audioUrl = data.publicUrl; setLog(l=>l+', audio geüpload');
-    }
-    if(cover){
-      const path = `${mSlug}/${Date.now()}-${cover.name}`;
-      const { error } = await sb.storage.from('covers').upload(path, cover);
-      if(error) return setLog('Fout cover upload: '+error.message);
-      const { data } = sb.storage.from('covers').getPublicUrl(path);
-      coverUrl = data.publicUrl; setLog(l=>l+', cover geüpload');
-    }
-    // meditatie
-    const { error: merr } = await sb.from('meditations').insert({
-      category_id: catId, slug: mSlug, title: mTitle, subtitle: mSub,
-      description: mDesc, duration_seconds: mDur, audio_url: audioUrl, cover_url: coverUrl, is_free: isFree
+  async function createCategory(formData: FormData) {
+    'use server';
+    const sb2 = await supabaseServer();
+    const title = String(formData.get('title') || '');
+    const slug  = String(formData.get('slug')  || '');
+    const description = String(formData.get('description') || '');
+    await sb2.from('categories').insert({ title, slug, description });
+  }
+
+  async function createMeditation(formData: FormData) {
+    'use server';
+    const sb2 = await supabaseServer();
+    const title = String(formData.get('title') || '');
+    const slug  = String(formData.get('slug')  || '');
+    const subtitle = String(formData.get('subtitle') || '');
+    const description = String(formData.get('description') || '');
+    const category_id = Number(formData.get('category_id'));
+    const audio_url = String(formData.get('audio_url') || '');
+    const cover_url = String(formData.get('cover_url') || '');
+    const duration_seconds = Number(formData.get('duration_seconds') || 0);
+    const is_free = formData.get('is_free') === 'on';
+    await sb2.from('meditations').insert({
+      title, slug, subtitle, description,
+      category_id, audio_url, cover_url,
+      duration_seconds, is_free
     });
-    if(merr) return setLog('Fout meditatie: '+merr.message);
-    setLog(l=>l+', meditatie aangemaakt, klaar');
-  };
+  }
 
   return (
-    <main style={{maxWidth:640, margin:'40px auto', padding:'0 16px'}}>
-      <h1>Admin, content toevoegen</h1>
-      <form onSubmit={run}>
-        <h2>Categorie</h2>
-        <input value={catTitle} onChange={e=>setCatTitle(e.target.value)} placeholder="Titel" style={s.inp}/>
-        <input value={catSlug} onChange={e=>setCatSlug(e.target.value)} placeholder="slug" style={s.inp}/>
-        <textarea value={catDesc} onChange={e=>setCatDesc(e.target.value)} placeholder="Beschrijving" style={s.inp}/>
-        <h2>Meditatie</h2>
-        <input value={mTitle} onChange={e=>setMTitle(e.target.value)} placeholder="Titel" style={s.inp}/>
-        <input value={mSlug} onChange={e=>setMSlug(e.target.value)} placeholder="slug" style={s.inp}/>
-        <input value={mSub} onChange={e=>setMSub(e.target.value)} placeholder="Subtitel" style={s.inp}/>
-        <textarea value={mDesc} onChange={e=>setMDesc(e.target.value)} placeholder="Beschrijving" style={s.inp}/>
-        <input type="number" value={mDur} onChange={e=>setMDur(Number(e.target.value))} placeholder="Duur in seconden" style={s.inp}/>
-        <label style={{display:'block', margin:'8px 0'}}>
-          <input type="checkbox" checked={isFree} onChange={e=>setIsFree(e.target.checked)} /> Gratis
-        </label>
-        <div style={{display:'grid', gap:8}}>
-          <input type="file" accept="audio/*" onChange={e=>setAudio(e.target.files?.[0]||null)} />
-          <input type="file" accept="image/*" onChange={e=>setCover(e.target.files?.[0]||null)} />
+    <main className="container" style={{padding:'24px 0'}}>
+      <section className="section">
+        <h1>Admin</h1>
+        <p className="lead">Upload audio en covers, maak categorieën en meditaties</p>
+      </section>
+
+      <section className="section">
+        <h2>Bestanden uploaden</h2>
+        <AdminUploader />
+        <p className="lead">Plak de verkregen URL’s hieronder</p>
+      </section>
+
+      <section className="section" style={{display:'grid', gap:24}}>
+        <div className="card">
+          <h2>Nieuwe categorie</h2>
+          <form action={createCategory} style={{display:'grid', gap:10, marginTop:10}}>
+            <input name="title" placeholder="Titel" required style={{padding:10, borderRadius:10, border:'1px solid #e5e7eb'}}/>
+            <input name="slug" placeholder="slug bijvoorbeeld bodyscan" required style={{padding:10, borderRadius:10, border:'1px solid #e5e7eb'}}/>
+            <textarea name="description" placeholder="Beschrijving" rows={3} style={{padding:10, borderRadius:10, border:'1px solid #e5e7eb'}} />
+            <button className="btn" type="submit">Categorie maken</button>
+          </form>
         </div>
-        <button className="btn" style={{marginTop:12}}>Opslaan</button>
-      </form>
-      <p>{log}</p>
-      <style jsx>{`.btn{background:#1E4E3A,color:#fff,border:0,border-radius:999px,padding:12px 18px,font-weight:700}`}</style>
+
+        <div className="card">
+          <h2>Nieuwe meditatie</h2>
+          <form action={createMeditation} style={{display:'grid', gap:10, marginTop:10}}>
+            <input name="title" placeholder="Titel" required style={{padding:10, borderRadius:10, border:'1px solid #e5e7eb'}}/>
+            <input name="slug" placeholder="slug bijvoorbeeld bodyscan-10-minuten" required style={{padding:10, borderRadius:10, border:'1px solid #e5e7eb'}}/>
+            <input name="subtitle" placeholder="Subtitel" style={{padding:10, borderRadius:10, border:'1px solid #e5e7eb'}}/>
+            <select name="category_id" required style={{padding:10, borderRadius:10, border:'1px solid #e5e7eb'}}>
+              <option value="">Kies categorie</option>
+              {cats?.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+            </select>
+            <input name="audio_url" placeholder="Audio URL uit bucket audio" required style={{padding:10, borderRadius:10, border:'1px solid #e5e7eb'}}/>
+            <input name="cover_url" placeholder="Cover URL uit bucket covers" style={{padding:10, borderRadius:10, border:'1px solid #e5e7eb'}}/>
+            <input name="duration_seconds" type="number" placeholder="Duur in seconden" style={{padding:10, borderRadius:10, border:'1px solid #e5e7eb'}}/>
+            <label style={{display:'flex', gap:8, alignItems:'center'}}>
+              <input type="checkbox" name="is_free" /> Gratis te beluisteren
+            </label>
+            <textarea name="description" placeholder="Beschrijving, HTML mag" rows={5} style={{padding:10, borderRadius:10, border:'1px solid #e5e7eb'}} />
+            <button className="btn" type="submit">Meditatie maken</button>
+          </form>
+        </div>
+      </section>
     </main>
   );
 }
-const s = { inp:{width:'100%',padding:12,borderRadius:12,border:'1px solid #ddd',margin:'8px 0'} };
