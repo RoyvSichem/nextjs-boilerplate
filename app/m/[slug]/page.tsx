@@ -1,12 +1,16 @@
 import Player from '../../../components/Player';
 import { supabaseServer } from '../../../lib/supabase';
 
-export default async function Meditation({ params }:{ params:{ slug:string } }) {
+export default async function Meditation(
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await params;
   const sb = supabaseServer();
+
   const { data: m, error } = await sb
     .from('meditations')
     .select()
-    .eq('slug', params.slug)
+    .eq('slug', slug)
     .single();
 
   if (error || !m) return <main><p>Niet gevonden</p></main>;
