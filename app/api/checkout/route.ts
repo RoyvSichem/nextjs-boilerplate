@@ -11,7 +11,7 @@ export async function POST(){
   // B, of simpel zonder apiVersion
   // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
-  const sb = supabaseServer();
+  const sb = await supabaseServer();
   const { data:{ user } } = await sb.auth.getUser();
   if(!user) return new Response('Unauthorized',{status:401});
 
