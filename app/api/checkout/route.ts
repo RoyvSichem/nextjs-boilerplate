@@ -1,12 +1,11 @@
 import Stripe from 'stripe';
-import { supabaseServer } from '../../../lib/supabase-server';
+import { supabaseServer } from '../../../../lib/supabase';
 
 export async function POST(){
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion:'2024-06-20' });
   const sb = supabaseServer();
-  const { data: { user } } = await sb.auth.getUser();
-  if(!user) return new Response('Unauthorized', { status:401 });
-
+  const { data:{ user } } = await sb.auth.getUser();
+  if(!user) return new Response('Unauthorized',{status:401});
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     line_items: [{ price: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID!, quantity: 1 }],
