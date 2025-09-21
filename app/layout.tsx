@@ -1,8 +1,24 @@
 import './globals.css';
+import { supabaseServer } from '../lib/supabase-server';
+import { redirect } from 'next/navigation';
 
 export const metadata = { title: 'Awaren', description: 'Meditaties en meer' };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const sb = await supabaseServer();
+  const { data: { user } } = await sb.auth.getUser();
+  const { data: me } =
+    user
+      ? await sb.from('profiles').select('role').eq('id', user.id).single()
+      : { data: null as any };
+
+  async function signOut() {
+    'use server';
+    const sb2 = await supabaseServer();
+    await sb2.auth.signOut();
+    redirect('/');
+  }
+
   return (
     <html lang="nl">
       <head>
@@ -17,11 +33,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="logo-badge">A</span>
               <span>awaren</span>
             </a>
+
             <div className="navlinks">
               <a href="/c/bodyscan">Meditaties</a>
               <a href="/community">Community</a>
-              <a href="/profile">Profiel</a>
-              <a className="btn ghost" href="/subscribe">Lid worden</a>
+
+              {user ? (
+                <>
+                  <a href="/profile">Profiel</a>
+                  {me?.role === 'admin' && <a href="/admin">Admin</a>}
+                  <form action={signOut} style={{margin:0}}>
+                    <button className="btn ghost" type="submit">Uitloggen</button>
+                  </form>
+                </>
+              ) : (
+                <>
+                  <a className="btn ghost" href="/login">Inloggen</a>
+                  <a className="btn" href="/subscribe">Lid worden</a>
+                </>
+              )}
             </div>
           </div>
         </nav>
