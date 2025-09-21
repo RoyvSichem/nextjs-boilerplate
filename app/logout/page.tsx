@@ -1,6 +1,6 @@
 'use client';
 import { useEffect } from 'react';
-import { supabaseBrowser } from '@/lib/supabase';
+import { supabaseBrowser } from '../../lib/supabase-browser';
 
 export default function Logout(){
   useEffect(()=>{ supabaseBrowser().auth.signOut().then(()=>{ window.location.href='/' }); },[]);
