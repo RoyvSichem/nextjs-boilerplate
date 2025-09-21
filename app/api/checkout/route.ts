@@ -1,3 +1,4 @@
+// app/api/checkout/route.ts
 import Stripe from 'stripe';
 import { supabaseServer } from '../../../lib/supabase'; // 3 niveaus omhoog
 
