@@ -1,7 +1,7 @@
 import { supabaseServer } from '../lib/supabase';
 
 export default async function Home() {
-  const sb = supabaseServer();
+  const sb = await supabaseServer();
   const { data: cats } = await sb.from('categories').select().order('sort_order');
   const today = new Date().toISOString().slice(0,10);
   const { data: quote } = await sb.from('daily_quotes').select().eq('date_for', today).maybeSingle();
