@@ -1,10 +1,25 @@
-import { supabaseServer } from '../../../lib/supabase-server';
+import { supabaseServer } from '../../../lib/supabase';
 
-export default async function Category({ params }:{params:{slug:string}}){
+export default async function Category(
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await params;
   const sb = supabaseServer();
-  const { data: cat } = await sb.from('categories').select().eq('slug', params.slug).single();
-  if(!cat) return <main><p>Niet gevonden</p></main>;
-  const { data: meds } = await sb.from('meditations').select().eq('category_id', cat.id).order('created_at',{ascending:false});
+
+  const { data: cat, error: catErr } = await sb
+    .from('categories')
+    .select()
+    .eq('slug', slug)
+    .single();
+
+  if (catErr || !cat) return <main><p>Niet gevonden</p></main>;
+
+  const { data: meds } = await sb
+    .from('meditations')
+    .select()
+    .eq('category_id', cat.id)
+    .order('created_at', { ascending: false });
+
   return (
     <main style={{maxWidth:980, margin:'24px auto', padding:'0 16px'}}>
       <h1>{cat.title}</h1>
