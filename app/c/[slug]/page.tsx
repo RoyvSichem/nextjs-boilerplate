@@ -4,7 +4,7 @@ export default async function Category(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
-  const sb = supabaseServer();
+  const sb = await supabaseServer();
 
   const { data: cat, error: catErr } = await sb
     .from('categories')
