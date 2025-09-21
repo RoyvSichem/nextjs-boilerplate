@@ -1,4 +1,4 @@
-import { supabaseServer } from '../../../lib/supabase'; // 3 niveaus omhoog
+import { supabaseServer } from '../../../../lib/supabase'; // 3 niveaus omhoog
 
 export async function POST(req: Request){
   const { meditation_id, seconds, completed } = await req.json();
