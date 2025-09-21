@@ -1,5 +1,5 @@
 import Player from '../../../components/Player';
-import { supabaseServer } from '../../../lib/supabase-server';
+import { supabaseServer } from '../../../lib/supabase';
 
 export default async function Meditation({ params }:{ params:{ slug:string } }) {
   const sb = supabaseServer();
