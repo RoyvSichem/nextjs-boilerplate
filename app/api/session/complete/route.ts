@@ -2,7 +2,7 @@ import { supabaseServer } from '../../../../lib/supabase'; // 3 niveaus omhoog
 
 export async function POST(req: Request){
   const { meditation_id, seconds, completed } = await req.json();
-  const sb = supabaseServer();
+  const sb = await supabaseServer();
   const { data:{ user } } = await sb.auth.getUser();
   if(!user) return new Response('Unauthorized',{status:401});
   await sb.from('sessions').insert({
