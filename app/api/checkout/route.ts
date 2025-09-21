@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { supabaseServer } from '../../../../lib/supabase';
+import { supabaseServer } from '../../../lib/supabase'; // 3 niveaus omhoog
 
 export async function POST(){
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion:'2024-06-20' });
