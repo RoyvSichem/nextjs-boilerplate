@@ -1,4 +1,4 @@
-import { supabaseServer } from '../../../lib/supabase-server';
+import { supabaseServer } from '../../../../lib/supabase-server';
 export async function POST(req:Request){
   const { meditation_id, seconds, completed } = await req.json();
   const sb = supabaseServer();
