@@ -28,7 +28,7 @@ export default async function Meditation(
         </div>
       </section>
 
-      <section className="section" style={{maxWidth:720, margin:'0 auto'}}>
+      <section className="section" style={{maxWidth:720, margin:'0 auto', padding:'0 4px'}}>
         {m.cover_url && (
           <img
             src={m.cover_url}
