@@ -1,7 +1,7 @@
 import { supabaseServer } from '../../lib/supabase';
 
 export default async function Profile(){
-  const sb = supabaseServer();
+  const sb = await supabaseServer();
   const { data:{ user } } = await sb.auth.getUser();
   if(!user) return <main style={{maxWidth:560, margin:'40px auto', padding:'0 16px'}}><p>Log eerst in</p></main>;
   const { data: p } = await sb.from('profiles').select('full_name, role').eq('id', user.id).single();
