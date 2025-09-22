@@ -1,47 +1,76 @@
-import 'server-only';
+'use server';
+
 import { supabaseServer } from './supabase-server';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
-/** checkin opslaan en suggestie bepalen */
-export async function createCheckin(formData: FormData){
-  const sb = await supabaseServer();
-  const mood = Number(formData.get('mood') || 3);
-  const note = String(formData.get('note') || '');
-  const { data: { user } } = await sb.auth.getUser();
-  if(!user) return { ok:false, error:'Unauthorized' };
-
-  const { error } = await sb.from('checkins').insert({ user_id:user.id, mood, note });
-  if(error) return { ok:false, error:error.message };
-
-  // simpele suggestie, je kunt dit later slimmer maken
-  let suggestion = { href:'/m/bodyscan-10-minuten', title:'Bodyscan 10 minuten' };
-  if(mood <= 2) suggestion = { href:'/m/ademruimte-3-minuten', title:'Ademruimte 3 minuten' };
-  if(mood >= 4) suggestion = { href:'/m/open-bewustzijn-5-minuten', title:'Open bewustzijn 5 minuten' };
-  return { ok:true, suggestion };
-}
-
-/** favorite togglen */
-export async function toggleFavorite(meditationId: number){
+/** Dagelijkse checkin opslaan en doorsturen naar een suggestie */
+export async function createCheckinAction(formData: FormData) {
   const sb = await supabaseServer();
   const { data: { user } } = await sb.auth.getUser();
-  if(!user) return { ok:false, error:'Unauthorized' };
-  const key = { user_id:user.id, meditation_id:meditationId };
-  const { data } = await sb.from('favorites').select('meditation_id').match(key).maybeSingle();
-  if(data){
-    await sb.from('favorites').delete().match(key);
-    return { ok:true, favored:false };
-  }else{
-    await sb.from('favorites').insert(key);
-    return { ok:true, favored:true };
+  if (!user) {
+    redirect('/login?next=/checkin');
   }
+
+  const mood = Number(formData.get('mood') ?? 3);
+  const note = String(formData.get('note') ?? '');
+
+  // veilige insert, dubbele dag negeren
+  const { error } = await sb.from('checkins').insert({ user_id: user.id, mood, note });
+  if (error && !error.message.includes('duplicate key')) {
+    // laat het niet crashen, maar ga door met een suggestie
+    console.error('checkin insert error', error.message);
+  }
+
+  // eenvoudige mapping, pas de slugs aan naar wat jij in je database hebt
+  const preferLow = ['ademruimte-3-minuten', 'bodyscan-10-minuten'];
+  const preferHigh = ['open-bewustzijn-5-minuten', 'bodyscan-10-minuten'];
+  const preferNeutral = ['bodyscan-10-minuten'];
+
+  const wanted = mood <= 2 ? preferLow : mood >= 4 ? preferHigh : preferNeutral;
+
+  // zoek eerst een gewenste slug
+  let dest: string | null = null;
+  for (const slug of wanted) {
+    const { data } = await sb.from('meditations').select('slug').eq('slug', slug).maybeSingle();
+    if (data?.slug) { dest = `/m/${data.slug}`; break; }
+  }
+  // anders pak iets gratis
+  if (!dest) {
+    const { data } = await sb
+      .from('meditations')
+      .select('slug')
+      .eq('is_free', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (data?.slug) dest = `/m/${data.slug}`;
+  }
+  // ultieme fallback
+  if (!dest) dest = '/c/bodyscan';
+
+  redirect(dest);
 }
 
-/** booster dag afronden */
-export async function completeBoosterDay(boosterId: number, day: number){
+/** Favorite togglen en de pagina verversen */
+export async function toggleFavoriteAction(meditationId: number, pathToRevalidate: string) {
   const sb = await supabaseServer();
   const { data: { user } } = await sb.auth.getUser();
-  if(!user) return { ok:false, error:'Unauthorized' };
-  const { error } = await sb.from('user_booster_progress')
-    .insert({ user_id:user.id, booster_id:boosterId, day_number:day });
-  if(error && !error.message.includes('duplicate key')) return { ok:false, error:error.message };
-  return { ok:true };
+  if (!user) {
+    redirect('/login');
+  }
+  const key = { user_id: user.id, meditation_id: meditationId };
+
+  const { data: existing } = await sb
+    .from('favorites')
+    .select('meditation_id')
+    .match(key)
+    .maybeSingle();
+
+  if (existing) {
+    await sb.from('favorites').delete().match(key);
+  } else {
+    await sb.from('favorites').insert(key);
+  }
+  revalidatePath(pathToRevalidate);
 }
