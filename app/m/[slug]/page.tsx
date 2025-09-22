@@ -8,8 +8,11 @@ export const dynamic = 'force-dynamic';
 
 export default async function Meditation({
   params,
-}: { params: { slug: string } }) {
-  const { slug } = params;
+}: { params: any }) {
+  // params kan bij jou een Promise zijn, resolve veilig
+  const resolved = typeof params?.then === 'function' ? await params : params;
+  const slug: string = resolved?.slug;
+
   const sb = await supabaseServer();
 
   // Meditatie ophalen
@@ -23,13 +26,13 @@ export default async function Meditation({
     return (
       <main className="container section">
         <h1>Niet gevonden</h1>
-        <p>Deze meditatie bestaat niet (meer).</p>
+        <p>Deze meditatie bestaat niet meer</p>
         <Link className="btn" href="/">Terug naar home</Link>
       </main>
     );
   }
 
-  // Gebruiker + favoriet-status
+  // User en favoriet status
   const { data: { user } } = await sb.auth.getUser();
   let isFav = false;
   if (user) {
@@ -50,15 +53,9 @@ export default async function Meditation({
             <h1>{m.title}</h1>
             {m.subtitle && <p className="lead">{m.subtitle}</p>}
           </div>
-
-          {/* Hartje alleen tonen als iemand ingelogd is (anders login aanbieden) */}
-          {user ? (
-            <FavButton meditationId={m.id} isFav={isFav} path={`/m/${m.slug}`} />
-          ) : (
-            <Link className="btn ghost" href={`/login?next=/m/${m.slug}`} aria-label="Log in om te bewaren">
-              ♡ Bewaar
-            </Link>
-          )}
+          {user
+            ? <FavButton meditationId={m.id} isFav={isFav} path={`/m/${m.slug}`} />
+            : <Link className="btn ghost" href={`/login?next=/m/${m.slug}`}>♡ Bewaar</Link>}
         </div>
       </section>
 
