@@ -42,6 +42,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <>
                   <a href="/profile">Profiel</a>
                   {me?.role === 'admin' && <a href="/admin">Admin</a>}
+                  {me?.role === 'admin' && <a href="/admin/diagnostics">Diagnostics</a>}
                   <form action={signOut} style={{margin:0}}>
                     <button className="btn ghost" type="submit">Uitloggen</button>
                   </form>
