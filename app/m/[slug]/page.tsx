@@ -73,7 +73,7 @@ export default async function Meditation({
           <Player
             src={m.audio_url}
             duration={m.duration_seconds ?? 0}
-            meditationId={String(m.id)}
+            meditationId={m.id}
           />
         )}
 
