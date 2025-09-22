@@ -16,7 +16,7 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: 'https://www.awaren.app/auth/callback',
       },
     });
     if (error) {
