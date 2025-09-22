@@ -1,69 +1,91 @@
-import Player from '../../../components/Player';
-import { supabaseServer } from '../../../lib/supabase';
-import { toggleFavoriteAction } from '../../../lib/actions';
+// app/m/[slug]/page.tsx
+import Player from '@/components/Player';
+import FavButton from '@/components/FavButton';
+import { supabaseServer } from '@/lib/supabase';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
-export default async function Meditation(
-  { params }: { params: Promise<{ slug: string }> }
-) {
-  const { slug } = await params;
+export default async function Meditation({
+  params,
+}: { params: { slug: string } }) {
+  const { slug } = params;
   const sb = await supabaseServer();
 
+  // Meditatie ophalen
   const { data: m, error } = await sb
     .from('meditations')
-    .select()
+    .select('id, slug, title, subtitle, description, cover_url, audio_url, duration_seconds')
     .eq('slug', slug)
     .single();
 
   if (error || !m) {
-    return <main className="container"><p>Niet gevonden</p></main>;
+    return (
+      <main className="container section">
+        <h1>Niet gevonden</h1>
+        <p>Deze meditatie bestaat niet (meer).</p>
+        <Link className="btn" href="/">Terug naar home</Link>
+      </main>
+    );
   }
 
+  // Gebruiker + favoriet-status
   const { data: { user } } = await sb.auth.getUser();
-  let favored = false;
+  let isFav = false;
   if (user) {
-    const { data } = await sb
+    const { data: fav } = await sb
       .from('favorites')
       .select('meditation_id')
-      .match({ user_id: user.id, meditation_id: m.id })
+      .eq('user_id', user.id)
+      .eq('meditation_id', m.id)
       .maybeSingle();
-    favored = !!data;
+    isFav = !!fav;
   }
-
-  const action = toggleFavoriteAction.bind(null, m.id as number, `/m/${slug}`);
 
   return (
     <>
       <section className="hero">
-        <div className="container" style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:12}}>
+        <div className="container" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
           <div>
             <h1>{m.title}</h1>
-            <p className="lead">{m.subtitle}</p>
+            {m.subtitle && <p className="lead">{m.subtitle}</p>}
           </div>
-          <form action={action}>
-            <button
-              aria-label={favored ? 'Verwijder uit favorieten' : 'Voeg toe aan favorieten'}
-              title={favored ? 'Verwijder uit favorieten' : 'Voeg toe aan favorieten'}
-              className="btn ghost"
-              style={{minWidth:44}}
-            >
-              {favored ? '❤️' : '♡'}
-            </button>
-          </form>
+
+          {/* Hartje alleen tonen als iemand ingelogd is (anders login aanbieden) */}
+          {user ? (
+            <FavButton meditationId={m.id} isFav={isFav} path={`/m/${m.slug}`} />
+          ) : (
+            <Link className="btn ghost" href={`/login?next=/m/${m.slug}`} aria-label="Log in om te bewaren">
+              ♡ Bewaar
+            </Link>
+          )}
         </div>
       </section>
 
-      <section className="section" style={{maxWidth:720, margin:'0 auto'}}>
+      <section className="section" style={{ maxWidth: 720, margin: '0 auto' }}>
         {m.cover_url && (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={m.cover_url}
             alt=""
-            style={{width:'100%', borderRadius:'var(--radius)', boxShadow:'var(--shadow)', marginBottom:14}}
+            style={{ width:'100%', borderRadius:'var(--radius)', boxShadow:'var(--shadow)', marginBottom:14 }}
           />
         )}
-        <Player src={m.audio_url} duration={m.duration_seconds} meditationId={m.id} />
-        <article style={{marginTop:16, color:'var(--text)'}} dangerouslySetInnerHTML={{__html: m.description}} />
+
+        {m.audio_url && (
+          <Player
+            src={m.audio_url}
+            duration={m.duration_seconds ?? 0}
+            meditationId={String(m.id)}
+          />
+        )}
+
+        {m.description && (
+          <article
+            style={{ marginTop:16, color:'var(--text)' }}
+            dangerouslySetInnerHTML={{ __html: m.description }}
+          />
+        )}
       </section>
     </>
   );
