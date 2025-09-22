@@ -1,31 +1,28 @@
-// components/FavButton.tsx (Server Component)
+// components/FavButton.tsx  (Server Component)
 import { toggleFavoriteAction } from '@/lib/actions';
 
 export default function FavButton({
   meditationId,
   isFav,
-  path
-}: { meditationId:number; isFav:boolean; path:string }) {
-  // Server Action direct als form action
+  path,
+}: {
+  meditationId: number;
+  isFav: boolean;
+  path: string;
+}) {
+  // Server Action binden zodat de juiste params meegaan
+  const action = toggleFavoriteAction.bind(null, meditationId, path);
+
   return (
-    <form action={async () => { "use server"; await toggleFavoriteAction(meditationId, path); }}>
+    <form action={action}>
       <button
-        aria-pressed={isFav}
+        aria-label={isFav ? 'Verwijder uit favorieten' : 'Voeg toe aan favorieten'}
         title={isFav ? 'Verwijder uit favorieten' : 'Voeg toe aan favorieten'}
-        className={`heart ${isFav ? 'on' : ''}`}
-        style={{
-          width:40,height:40,borderRadius:999,border:'1px solid #e5e7eb',
-          background:'#fff', cursor:'pointer'
-        }}
+        className="btn ghost"
+        style={{ minWidth: 44 }}
       >
-        <span style={{fontSize:18, lineHeight:'40px'}}>
-          {isFav ? '♥' : '♡'}
-        </span>
+        {isFav ? '❤️' : '♡'}
       </button>
-      <style jsx>{`
-        .heart.on { border-color: var(--brand); color: var(--brand); }
-        .heart:hover { box-shadow: var(--shadow); }
-      `}</style>
     </form>
   );
 }
