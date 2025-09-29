@@ -1,6 +1,10 @@
+// app/page.tsx
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { supabaseServer } from '../lib/supabase-server';
-import CodeBridge from '../components/CodeBridge';
+
+// Laad CodeBridge alleen in de browser (voorkomt server-side crashes)
+const CodeBridge = dynamic(() => import('../components/CodeBridge'), { ssr: false });
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +34,7 @@ export default async function Home() {
 
     // Categorieën
     const { data: cData, error: cErr } = await sb
-      .from<Category>('categories')
+      .from('categories')
       .select('id, slug, title, description')
       .order('title');
 
@@ -38,12 +42,12 @@ export default async function Home() {
       console.error('categories query error:', cErr.message);
       catsOk = false;
     } else {
-      cats = cData ?? [];
+      cats = (cData as Category[]) ?? [];
     }
 
     // Laatste gratis meditaties
     const { data: lData, error: lErr } = await sb
-      .from<LiteMeditation>('meditations')
+      .from('meditations')
       .select('id, slug, title, subtitle, cover_url')
       .eq('is_free', true)
       .order('created_at', { ascending: false })
@@ -53,7 +57,7 @@ export default async function Home() {
       console.error('meditations query error:', lErr.message);
       latestOk = false;
     } else {
-      latest = lData ?? [];
+      latest = (lData as LiteMeditation[]) ?? [];
     }
   } catch (e) {
     console.error('home load failed:', e);
