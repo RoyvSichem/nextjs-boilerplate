@@ -1,12 +1,13 @@
 // app/page.tsx
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
+import nextDynamic from 'next/dynamic';
 import { supabaseServer } from '../lib/supabase-server';
 
-// Laad CodeBridge alleen in de browser (voorkomt server-side crashes)
-const CodeBridge = dynamic(() => import('../components/CodeBridge'), { ssr: false });
-
+// Next.js route segment config
 export const dynamic = 'force-dynamic';
+
+// Laad CodeBridge alleen client-side
+const CodeBridge = nextDynamic(() => import('../components/CodeBridge'), { ssr: false });
 
 type Category = {
   id: number;
@@ -32,37 +33,24 @@ export default async function Home() {
   try {
     const sb = await supabaseServer();
 
-    // Categorieën
     const { data: cData, error: cErr } = await sb
       .from('categories')
       .select('id, slug, title, description')
       .order('title');
+    if (cErr) { console.error('categories query error:', cErr.message); catsOk = false; }
+    else { cats = (cData as Category[]) ?? []; }
 
-    if (cErr) {
-      console.error('categories query error:', cErr.message);
-      catsOk = false;
-    } else {
-      cats = (cData as Category[]) ?? [];
-    }
-
-    // Laatste gratis meditaties
     const { data: lData, error: lErr } = await sb
       .from('meditations')
       .select('id, slug, title, subtitle, cover_url')
       .eq('is_free', true)
       .order('created_at', { ascending: false })
       .limit(6);
-
-    if (lErr) {
-      console.error('meditations query error:', lErr.message);
-      latestOk = false;
-    } else {
-      latest = (lData as LiteMeditation[]) ?? [];
-    }
+    if (lErr) { console.error('meditations query error:', lErr.message); latestOk = false; }
+    else { latest = (lData as LiteMeditation[]) ?? []; }
   } catch (e) {
     console.error('home load failed:', e);
-    catsOk = false;
-    latestOk = false;
+    catsOk = latestOk = false;
   }
 
   return (
@@ -82,27 +70,18 @@ export default async function Home() {
 
       <section className="container section">
         <h2>Categorieën</h2>
-
         {!catsOk ? (
-          <div className="card">
-            <p className="muted">Kon categorieën niet laden. Probeer het later opnieuw.</p>
-          </div>
+          <div className="card"><p className="muted">Kon categorieën niet laden. Probeer het later opnieuw.</p></div>
         ) : cats.length ? (
           <div className="grid cards">
             {cats.map((c) => (
               <Link key={c.id} href={`/c/${c.slug}`} className="card">
                 <strong>{c.title}</strong>
-                {c.description && (
-                  <p className="muted" style={{ marginTop: 6 }}>
-                    {c.description}
-                  </p>
-                )}
+                {c.description && <p className="muted" style={{ marginTop: 6 }}>{c.description}</p>}
               </Link>
             ))}
           </div>
-        ) : (
-          <p className="muted">Nog geen categorieën</p>
-        )}
+        ) : <p className="muted">Nog geen categorieën</p>}
       </section>
 
       {latestOk && latest.length > 0 && (
@@ -110,14 +89,8 @@ export default async function Home() {
           <h2>Gratis voor jou</h2>
           <div className="grid cards">
             {latest.map((m) => (
-              <Link
-                key={m.id}
-                href={`/m/${m.slug}`}
-                className="card"
-                style={{ display: 'grid', gap: 10 }}
-              >
-                {m.cover_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
+              <Link key={m.id} href={`/m/${m.slug}`} className="card" style={{ display: 'grid', gap: 10 }}>
+                {m.cover_url && (/* eslint-disable-next-line @next/next/no-img-element */
                   <img src={m.cover_url} alt="" style={{ borderRadius: 12 }} />
                 )}
                 <div>
