@@ -1,13 +1,9 @@
 // app/page.tsx
 import Link from 'next/link';
-import nextDynamic from 'next/dynamic';
 import { supabaseServer } from '../lib/supabase-server';
+import ClientBridge from '../components/ClientBridge';
 
-// Next.js route segment config
 export const dynamic = 'force-dynamic';
-
-// Laad CodeBridge alleen client-side
-const CodeBridge = nextDynamic(() => import('../components/CodeBridge'), { ssr: false });
 
 type Category = {
   id: number;
@@ -50,12 +46,14 @@ export default async function Home() {
     else { latest = (lData as LiteMeditation[]) ?? []; }
   } catch (e) {
     console.error('home load failed:', e);
-    catsOk = latestOk = false;
+    catsOk = false;
+    latestOk = false;
   }
 
   return (
     <>
-      <CodeBridge />
+      {/* Client-only bridge */}
+      <ClientBridge />
 
       <section className="hero">
         <div className="container">
@@ -81,7 +79,9 @@ export default async function Home() {
               </Link>
             ))}
           </div>
-        ) : <p className="muted">Nog geen categorieën</p>}
+        ) : (
+          <p className="muted">Nog geen categorieën</p>
+        )}
       </section>
 
       {latestOk && latest.length > 0 && (
@@ -90,7 +90,8 @@ export default async function Home() {
           <div className="grid cards">
             {latest.map((m) => (
               <Link key={m.id} href={`/m/${m.slug}`} className="card" style={{ display: 'grid', gap: 10 }}>
-                {m.cover_url && (/* eslint-disable-next-line @next/next/no-img-element */
+                {m.cover_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={m.cover_url} alt="" style={{ borderRadius: 12 }} />
                 )}
                 <div>
